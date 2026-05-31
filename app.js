@@ -52,7 +52,6 @@
 
 // app.use(errorMiddleware);
 // export default app;
-
 import express from "express";
 import { dbConnection } from "./database/dbConnection.js";
 import { config } from "dotenv";
@@ -75,7 +74,28 @@ const app = express();
 
 
 // =======================
-// CORS CONFIG (PRODUCTION READY)
+// SAFE DB CONNECTION (VERCEL FIX)
+// =======================
+let isConnected = false;
+
+const connectDB = async () => {
+  if (isConnected) return;
+  await dbConnection();
+  isConnected = true;
+};
+
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
+
+
+// =======================
+// CORS CONFIG
 // =======================
 app.use(
   cors({
@@ -83,7 +103,7 @@ app.use(
       "http://localhost:5173",
       "http://localhost:5174",
       process.env.FRONTEND_URL_ONE,
-      process.env.FRONTEND_URL_TWO
+      process.env.FRONTEND_URL_TWO,
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -118,13 +138,7 @@ app.use("/api/v1/emergency", emergencyRouter);
 
 
 // =======================
-// DATABASE CONNECTION
-// =======================
-dbConnection();
-
-
-// =======================
-// HEALTH CHECK ROUTE (IMPORTANT FOR VERCEL)
+// HEALTH CHECK (VERY IMPORTANT)
 // =======================
 app.get("/", (req, res) => {
   res.status(200).json({
@@ -135,7 +149,7 @@ app.get("/", (req, res) => {
 
 
 // =======================
-// ERROR MIDDLEWARE
+// ERROR HANDLING
 // =======================
 app.use(errorMiddleware);
 
